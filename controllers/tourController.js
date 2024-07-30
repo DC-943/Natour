@@ -26,8 +26,35 @@ const Tour = require("../models/tourModel");
 
 exports.getAllTours = async (req, res) => {
   try {
-    const tours = await Tour.find();
-    // console.log(req.requestTime);
+    //build query
+    //1A) Filtering
+    console.log(req.query);
+
+    const queryObj = { ...req.query };
+    const excludedFields = ["page", "sort", "limit", "fields"];
+    excludedFields.forEach((el) => delete queryObj[el]);
+    //console.log(req.query, queryObj);
+
+    //1B) Advanced filtering
+    let queryStr = JSON.stringify(queryObj);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+    console.log(JSON.parse(queryStr));
+
+    let query = Tour.find(JSON.parse(queryStr));
+    //console.log(req.requestTime);
+    //execute query
+
+    // 2) Sorting
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      console.log(sortBy);
+      query = query.sort(sortBy);
+      //sort('price ratingAverage')
+    } else {
+      query = query.sort("-createdAt");
+    }
+
+    const tours = await query;
     res.status(200).send({
       status: "success",
       requestedAt: req.requestTime,
@@ -111,6 +138,7 @@ exports.createTour = async (req, res) => {
 };
 exports.updateTour = async (req, res) => {
   try {
+    console.log(req.params.id, req.body);
     const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
